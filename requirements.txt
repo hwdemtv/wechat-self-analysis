@@ -1,0 +1,15 @@
+# wechat-self-analysis —— Python 依赖（真·解耦后的最小集合）
+#
+# 解密核心已内置为 scripts/_decrypt.py（从 wechatauto/db.py vendored，Apache-2.0），
+# 因此本技能【不再需要】安装 wechatauto / WechatVibe，也不再需要 psutil / pywin32 /
+# uiautomation / pyperclip / colorama / Pillow 等一整棵原生依赖树。
+#
+# 只需以下三个 PyPI 可安装的纯包：
+cryptography      # SQLCipher 逐页解密（AES-256-CBC + HMAC 校验）
+zstandard        # 微信消息体 zstd 压缩解压（懒加载；无 zstd 的消息仍可导出）
+jieba            # deep_analyze.py 中文分词（可选：缺它仅 deep_analyze 不可用）
+
+# 说明：
+#   * 内存密钥提取用的是标准库 ctypes 直接 ReadProcessMemory，所以 psutil 不再需要。
+#   * wechatauto 仅在「上面的包都装不上」时才作为可选回退后端保留兼容，
+#     正常环境请用内置 _decrypt 即可。

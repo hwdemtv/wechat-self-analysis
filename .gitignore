@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.log
+*.dxf
+*.dwg
+_work/
+.DS_Store
+output/
+.wc_cache/
+*.part
+*.zip
