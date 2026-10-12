@@ -10,7 +10,7 @@ agent_created: true
 
 ## 硬性前提（先逐项确认，任一不满足则向用户说明）
 
-1. **Windows** + 微信 4.x（Weixin.exe）**已在本机桌面会话登录**——SQLCipher 密钥只存在于微信进程内存，这是整个方案的第一性原理；微信未运行时导出必然失败
+1. **Windows** + 微信 4.x（Weixin.exe）**已在本机桌面会话登录**——SQLCipher 密钥只存在于微信进程内存，这是整个方案的第一性原理；微信未运行时导出必然失败。如需微信 4.x 安装包（社区分享，非官方渠道）：<https://pan.quark.cn/s/5460249b7eba>，请自行校验来源与安全。
 2. Python 3.11+，依赖只需三个纯 PyPI 包：`pip install cryptography zstandard jieba`（清单见技能根目录 `requirements.txt`）。**本技能已不再需要 `wechatauto` / WechatVibe**——微信数据库解密核心已 vendored 为自带的 `scripts/_decrypt.py`（仅用 `cryptography` + 懒加载 `zstandard`，密钥提取走标准库 `ctypes`，连 `psutil` 都不再需要）。`wechatauto` 仅作为「上述包都装不上」时的可选回退后端保留兼容。`_decrypt` 未就绪时，`dump_chats.py` 会打印清晰的安装指引并退出，不会抛难懂堆栈。**拿到技能后，先运行 `install_deps.cmd`（Windows 双击）或 `python scripts/install_deps.py` 一键检查并安装依赖，省去手动 pip。**
 3. 仅分析**用户本人**的数据；明确拒绝分析他人设备/他人账号的请求
 

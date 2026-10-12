@@ -90,7 +90,25 @@ git clone https://github.com/hwdemtv/wechat-self-analysis.git ~/.workbuddy/skill
 - 到仓库 **Releases** 页下载 `wechat-self-analysis_clean.zip`（已剔除一切真实聊天数据，仅留占位说明）；
 - 解压到你的 Agent 技能目录（如 `~/.workbuddy/skills/`），重启 Agent 即生效。
 
-> 本技能是标准 `SKILL.md` 体系，**不绑定特定 Agent**，按你所用 Agent 的技能目录放置即可，无需为不同 Agent 各写一套安装步骤。
+> 本技能是标准 `SKILL.md` 体系，按你所用 Agent 的技能目录放置即可，**无需为不同 Agent 改写任何文件**。
+
+### 在各 Agent 中安装（放置位置）
+
+上面三种方式拿到的是同一份技能文件。按你使用的 Agent，把它放到对应**技能目录**即可（目录名固定为 `wechat-self-analysis`，且 `SKILL.md` 必须位于 `技能目录/wechat-self-analysis/SKILL.md`）：
+
+| Agent | 用户级（全部项目生效） | 项目级（仅当前仓库） |
+|---|---|---|
+| **WorkBuddy** | `~/.workbuddy/skills/wechat-self-analysis/` | `<项目>/.workbuddy/skills/wechat-self-analysis/` |
+| **Claude Code** | `~/.claude/skills/wechat-self-analysis/` | `<项目>/.claude/skills/wechat-self-analysis/` |
+| **Codex** | `~/.agents/skills/wechat-self-analysis/`（官方）或 `~/.codex/skills/wechat-self-analysis/`（旧版 CLI） | `<项目>/.agents/skills/wechat-self-analysis/` |
+
+以 Claude Code 用户级为例（其余同理，只换目录即可）：
+
+```bash
+git clone https://github.com/hwdemtv/wechat-self-analysis.git ~/.claude/skills/wechat-self-analysis
+```
+
+> 放置后**重启对应 Agent / 开新会话**即可生效；Codex 会自动扫描技能目录，未出现时重启一次。所有 Agent 共用同一套 `SKILL.md` 开放标准。
 
 安装后，**先运行依赖引导**：
 ```bash
@@ -105,6 +123,7 @@ python scripts/install_deps.py
 ## 快速开始 / Quick Start
 
 > ⚠️ 前置：Windows + 微信 4.x（Weixin.exe）**已在本机桌面会话登录**。微信未运行时导出必然失败。
+> 如需微信 4.x 安装包（社区分享，非官方渠道）：<https://pan.quark.cn/s/5460249b7eba> —— 请自行校验文件来源与安全。
 
 ```bash
 # 1) 解密导出
