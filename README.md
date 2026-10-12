@@ -85,7 +85,12 @@ git clone https://github.com/hwdemtv/wechat-self-analysis.git ~/.workbuddy/skill
 
 ### 方式三：下载干净版 zip
 
-运行仓库内的 `python build_clean_dist.py` 生成 `wechat-self-analysis_clean.zip`，解压到 `~/.workbuddy/skills/` 即可。
+不想克隆仓库时，直接获取现成干净版即可：
+
+- 到仓库 **Releases** 页下载 `wechat-self-analysis_clean.zip`（已剔除一切真实聊天数据，仅留占位说明）；
+- 解压到你的 Agent 技能目录（如 `~/.workbuddy/skills/`），重启 Agent 即生效。
+
+> 本技能是标准 `SKILL.md` 体系，**不绑定特定 Agent**，按你所用 Agent 的技能目录放置即可，无需为不同 Agent 各写一套安装步骤。
 
 安装后，**先运行依赖引导**：
 ```bash
