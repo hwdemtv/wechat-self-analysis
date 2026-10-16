@@ -97,7 +97,7 @@ python scripts/analyze_chats.py
 
 本技能定位为 **Local-first Personal Data Audit（本地优先的个人数据审计工具）**，不是「微信破解工具」。核心安全属性：
 
-- **Local-first / 零联网**：解密、统计、分析全部在本机完成；脚本内无任何 `socket` / `requests` / `urllib` / `httpx` / `aiohttp` / `urlopen` 调用（已验证）。唯一联网是可选的依赖安装（从 PyPI 拉公开纯包）。
+- **Local-first / 零联网**：解密与分析全程离线、零上传、不调用任何云端服务；仅首次安装依赖需联网拉取纯 PyPI 包（`cryptography`/`zstandard`/`jieba`），且支持 `--dry-run` 预检。脚本内无任何 `socket` / `requests` / `urllib` / `httpx` / `aiohttp` / `urlopen` 调用（已验证）。
 - **最小进程权限**：提取密钥仅用 `PROCESS_VM_READ | PROCESS_QUERY_INFORMATION`（读内存 + 查信息），**不是** `PROCESS_ALL_ACCESS`。只读微信数据库，不写入、不注入、不模拟客户端。
 - **明文默认不落显眼目录**：`dump_chats.py` 默认把明文写到 gitignored 的 `.wc_cache/export/`；只有用户显式 `--export-raw` 并在交互中确认（非交互环境需 `--yes`）才落到 `output/`。
 - **读取前需用户确认**：见上方隐私红线第 4 条。

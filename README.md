@@ -14,9 +14,9 @@
 
 ## 这是什么 / What is this
 
-一个 **WorkBuddy 技能（Agent Skill）**：在你**自己的 Windows 电脑**上，把你登录中的微信 4.x 本机加密聊天数据库（SQLCipher 4）解密导出为纯文本 `messages.jsonl`，再用十几个分析脚本生成多维度的「自我行为分析报告」——**全程不联网、不上传、不调用任何云端服务**。
+一个 **WorkBuddy 技能（Agent Skill）**：在你**自己的 Windows 电脑**上，把你登录中的微信 4.x 本机加密聊天数据库（SQLCipher 4）解密导出为纯文本 `messages.jsonl`，再用十几个分析脚本生成多维度的「自我行为分析报告」——**解密与分析全程离线、零上传、不调用任何云端服务；仅首次安装依赖需联网拉取纯 PyPI 包（`cryptography`/`zstandard`/`jieba`），且支持 `--dry-run` 预检**。
 
-A WorkBuddy agent skill that **locally** decrypts your own WeChat 4.x on-disk SQLCipher databases and produces multi-dimensional self-behavior analytics. **No network, no upload, no cloud.**
+A WorkBuddy agent skill that **locally** decrypts your own WeChat 4.x on-disk SQLCipher databases and produces multi-dimensional self-behavior analytics. **Decryption & analysis are fully offline with zero upload and no cloud calls; only the first-time dependency install fetches pure PyPI packages (`cryptography`/`zstandard`/`jieba`), and supports `--dry-run` preflight.**
 
 **核心关键词 / Keywords:** 微信聊天记录导出 · WeChat 4.x 解密 · SQLCipher · 聊天记录备份 · 自我分析 · 行为画像 · 隐私优先 · 本地离线 · 数字化转型复盘 · 关系资产盘点 · agent skill · WorkBuddy
 
@@ -60,7 +60,7 @@ A WorkBuddy agent skill that **locally** decrypts your own WeChat 4.x on-disk SQ
 | 导出耗时 | 单遍流式 14–180 秒（取决于消息量） |
 | 解密后端 | 内置 `scripts/_decrypt.py`（vendored，零 wechatauto 依赖） |
 | 依赖体积 | 仅 `cryptography` + `zstandard` + `jieba` |
-| 网络请求 | 0（完全离线） |
+| 网络请求 | 0（运行期完全离线） |
 
 ---
 
