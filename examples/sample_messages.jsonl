@@ -1,0 +1,4 @@
+{"chat":"wxid_fakefriend001","chat_name":"张三","sender_id":2,"sender_name":"我","side":"self","type":"文本","create_time":1716000000,"content":"明天开会记得带身份证 420100199001011234 和银行卡 6222021234567890123","local_id":1,"sort_seq":1}
+{"chat":"wxid_fakefriend001","chat_name":"张三","sender_id":100,"sender_name":"张三","side":"them","type":"文本","create_time":1716000060,"content":"好的，我手机号 13800138000，邮箱 fake.user@example.com，wxid 是 wxid_abcde12345","local_id":2,"sort_seq":2}
+{"chat":"wxid_fakefriend001","chat_name":"张三","sender_id":100,"sender_name":"张三","side":"them","type":"文本","create_time":1716000120,"content":"我们公司 武汉假科技有限公司 在 qq 123456789 上联系，官网 http://fake-company.example.com","local_id":3,"sort_seq":3}
+{"chat":"wxid_fakegroup002","chat_name":"假项目群","sender_id":2,"sender_id_dummy":2,"type":"文本","create_time":1716001000,"content":"进度正常，文档放 https://share.example.com/doc/abc 了","local_id":4,"sort_seq":4}

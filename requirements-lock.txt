@@ -1,0 +1,18 @@
+# ──────────────────────────────────────────────────────────────────────────
+# wechat-self-analysis —— 锁定版依赖（可复现的最小运行时集合）
+#
+# 解密核心已 vendored 进 scripts/_decrypt.py（仅依赖 cryptography + zstandard，
+# 用标准库 ctypes 直接读微信进程内存提取 SQLCipher 密钥，无需 psutil / wechatauto）。
+#
+# 下面三个【纯 PyPI 包】是本技能运行时所需的全部第三方依赖：
+#   - cryptography  逐页 SQLCipher 解密（AES-256-CBC + HMAC）
+#   - zstandard     微信消息体 zstd 解压（懒加载；无 zstd 的消息仍可导出）
+#   - jieba         deep_analyze.py 中文分词（可选：缺它仅 deep_analyze 不可用）
+#
+# 版本于 2026-10-16 在托管 Python 3.13 / 系统 Python 3.11 环境实测锁定。
+# 安装：pip install -r requirements-lock.txt
+# ──────────────────────────────────────────────────────────────────────────
+
+cryptography==50.0.2
+zstandard==0.25.0
+jieba==0.42.1

@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
-"""Dump decrypted WeChat 4.x messages to plaintext JSONL for self-behavior analysis.
+"""Dump decrypted WeChat 4.x messages to plaintext JSONL for SELF-behavior analysis.
 
-MUST run in the interactive desktop session where WeChat is logged in — the SQLCipher
-key lives only in the WeChat process memory. We reuse WechatVibe's bundled `wechatauto`
-library, which is exactly what the WechatVibe GUI itself uses for WeChat 4.x:
+这是一个【本地、离线、仅限本人账号自我审计】的工具。MUST run in the interactive
+desktop session where WeChat is logged in — the SQLCipher key lives only in the
+WeChat process memory. 解密后端优先用内置 vendored 的 scripts/_decrypt.py（仅依赖
+cryptography + zstandard，用标准库 ctypes 直接 ReadProcessMemory 提取密钥，无需
+wechatauto / psutil）：
 
   * WeChatDB()            auto-detects the data dir AND extracts the per-account
                           SQLCipher key from live WeChat memory via the
@@ -17,20 +19,27 @@ library, which is exactly what the WechatVibe GUI itself uses for WeChat 4.x:
   * _export_row()         friendly-decodes message_content (utf-8 / zstd / blob).
   * _resolve_sender()     resolves a sender_id to a display name; sender_id == 2 == me.
 
-Output (in ./export):
-  messages.jsonl   one message per line:
-                     {chat, chat_name, side("self"|"them"), sender_id, sender_name,
-                      type, create_time, content, local_id, sort_seq}
-  manifest.json     {wxid, nick_name, total_chats, total_messages, first_time,
-                     last_time, exported_at, top_chats:[{username,name,count}]}
+⚠️ 隐私默认策略（P0-01）：
+  默认导出到 .wc_cache/export/messages.jsonl（已 gitignore、临时、易清理），
+  不会把明文落在显眼的 output/ 目录。只有当用户显式加 --export-raw 并二次确认后，
+  才把明文持久化到 output/（便于分析/分享）。明文聊天记录含大量他人个人信息，
+  请务必本地脱敏（见 privacy_filter.py）后再对外。
 
 Run:  dump-chats.cmd   (double-click in your own session, WeChat running & logged in)
-Self-test (no WeChat needed):  python _dump_chats.py --selftest
+Self-test (no WeChat needed):  python dump_chats.py --selftest
+  python dump_chats.py --export-raw     # 显式保留明文到 output/（会要求确认）
 """
 import sys, os, re, json, time, sqlite3, argparse, atexit
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SKILL_ROOT = os.path.dirname(HERE)   # 技能根目录(scripts/ 的上一级)
+
+# 共享路径 + 轻量日志脱敏（统一 JSONL 定位，默认落盘到 gitignored 的 .wc_cache/export/）
+from _paths import default_export_dir, redact_log
+
+# SQL 表名白名单：只允许 Msg_<字母数字下划线>，避免把任意 sqlite_master 名称
+# 直接拼进 SELECT 语句（P2-01 标识符校验）。
+TABLE_RE = re.compile(r"^Msg_[A-Za-z0-9_]+$")
 
 # 解密后端（优先自带、零 wechatauto 依赖）：
 #   首选 scripts/_decrypt.py —— 已从 wechatauto/db.py vendored 的解密核心，
@@ -84,12 +93,18 @@ def selftest():
         from cryptography.hazmat.primitives.ciphers import algorithms  # noqa: F401
     except Exception as e:  # pragma: no cover
         problems.append("cryptography 未安装: %s" % e)
+    # zstandard 为懒加载：无它时未压缩消息仍可导出，仅 zstd 压缩消息会跳过。
     try:
-        import psutil  # noqa: F401
+        import zstandard  # noqa: F401
     except Exception:
-        problems.append("psutil 未安装（内存扫描需要）")
+        problems.append("zstandard 未安装（zstd 压缩消息将无法解压，其余不受影响）")
+    # 注意：内存密钥提取用标准库 ctypes ReadProcessMemory，【不需要】psutil。
     if not callable(getattr(WeChatDB, "export_history", None)):
         problems.append("WeChatDB.export_history 不存在")
+    for meth in ("_build_md5_index", "_sender_id_index", "_export_row", "_resolve_sender",
+                 "get_self_info", "_message_dbs"):
+        if not callable(getattr(WeChatDB, meth, None)):
+            problems.append("WeChatDB.%s 缺失" % meth)
     print("decrypt backend=%s, WeChatDB=%r" % (_BACKEND, WeChatDB))
     print("MSG_TYPE_NAMES entries=%d" % len(MSG_TYPE_NAMES))
     if problems:
@@ -97,7 +112,8 @@ def selftest():
         for p in problems:
             print("  - " + p)
         return 1
-    print("SELFTEST OK (venv/crypto/psutil ready). 现在请在已登录微信的桌面会话双击 dump-chats.cmd 运行真实导出。")
+    print("SELFTEST OK (cryptography + zstandard 就绪；内存密钥提取用 ctypes，无需 psutil)。")
+    print("现在请在已登录微信的桌面会话双击 dump-chats.cmd 运行真实导出。")
     return 0
 
 
@@ -154,10 +170,55 @@ def _call_with_retry(fn, *a, **k):
     raise last
 
 
+def parse_args():
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--selftest", action="store_true", help="仅校验环境，不接触微信")
+    ap.add_argument("--export-raw", action="store_true",
+                   help="把明文 messages.jsonl 持久化到 output/（默认落在 gitignored 的 "
+                        ".wc_cache/export/）。会要求二次确认，且仅限本地自我审计使用。")
+    ap.add_argument("--yes", action="store_true",
+                   help="配合 --export-raw：跳过交互确认（仅在你明确知晓风险的非交互场景使用）")
+    return ap.parse_args()
+
+
 def main():
+    args = parse_args()
+    if args.selftest:
+        return selftest()
     if not _ensure_backend():
         return 2
-    export_dir = os.path.join(SKILL_ROOT, "output")
+
+    # —— 隐私默认策略（P0-01）——
+    # 默认把明文写到 .wc_cache/export/（临时、gitignore，易清理、不显眼）；
+    # 仅当用户显式 --export-raw 并二次确认后，才持久化到 output/ 供分析/分享。
+    export_raw = args.export_raw
+    if export_raw and not args.yes and sys.stdin.isatty():
+        banner = (
+            "\n" + "=" * 64 + "\n"
+            " ⚠️  即将把【明文聊天记录】持久化到 output/ 目录\n"
+            "     该目录虽已 gitignore，但仍是一份长期存在的明文副本，\n"
+            "     含你与他人的大量个人信息。请确认：\n"
+            "       · 仅在本机、仅分析你自己的账号；\n"
+            "       · 不提交进 git、不上传、不分享给任何第三方；\n"
+            "       · 对外使用前务必用 privacy_filter.py 脱敏。\n"
+            "     输入 y 继续，其它任意键取消："
+        )
+        try:
+            ans = input(banner)
+        except (EOFError, KeyboardInterrupt):
+            ans = ""
+        if ans.strip().lower() != "y":
+            sys.stderr.write("[dump] 已取消 --export-raw 导出。\n")
+            return 0
+    elif export_raw and not args.yes and not sys.stdin.isatty():
+        # 非交互环境（如双击 .cmd）未给 --yes：出于安全默认拒绝，提示用 --yes
+        sys.stderr.write(
+            "[dump] --export-raw 需要显式确认。非交互环境下请加 --yes 以表明你已知晓风险，\n"
+            "       或直接省略 --export-raw（默认把明文写到 .wc_cache/export/，更安全）。\n"
+        )
+        return 0
+
+    export_dir = default_export_dir(export_raw)
     os.makedirs(export_dir, exist_ok=True)
     jsonl_path = os.path.join(export_dir, "messages.jsonl")
     manifest_path = os.path.join(export_dir, "manifest.json")
@@ -174,7 +235,7 @@ def main():
             age = 9999
         if age < 600:
             sys.stderr.write(
-                "[dump] 检测到可能有另一个导出进程正在运行（export/.dump.lock，%.0f 秒前创建）。\n"
+                "[dump] 检测到可能有另一个导出进程正在运行（导出目录/.dump.lock，%.0f 秒前创建）。\n"
                 "       请先关闭其它导出窗口再试；若确认没有，手动删除该锁文件后重试。\n" % age
             )
             return 4
@@ -227,7 +288,9 @@ def main():
     self_info = db.get_self_info()
     wxid = self_info.get("username") or getattr(db, "wxid", "")
     self_nick = self_info.get("nick_name") or "我"
-    sys.stderr.write("[dump] 当前账号: %s (昵称: %s)\n" % (wxid, self_nick))
+    # 日志脱敏：不把完整 wxid / 家目录路径写进 stderr（防截图泄露）
+    sys.stderr.write("[dump] 当前账号: %s (昵称: %s)\n"
+                     % (redact_log(wxid), redact_log(self_nick)))
 
     idx = _call_with_retry(db._build_md5_index)
     nicks = _call_with_retry(db._nickname_index)
@@ -246,6 +309,8 @@ def main():
         for (t,) in conn.execute(
             "SELECT name FROM sqlite_master WHERE type='table' AND name LIKE 'Msg_%'"
         ).fetchall():
+            if not TABLE_RE.match(t):   # P2-01：拒绝任何非预期表名，绝不拼进 SQL
+                continue
             buckets.setdefault(t[4:], []).append((conn, t))
 
     if not buckets:
@@ -346,9 +411,4 @@ def main():
 
 
 if __name__ == "__main__":
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--selftest", action="store_true", help="仅校验环境，不接触微信")
-    args = ap.parse_args()
-    if args.selftest:
-        sys.exit(selftest())
     sys.exit(main())

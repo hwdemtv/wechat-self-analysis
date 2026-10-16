@@ -17,10 +17,10 @@ import zipfile
 SKILL_DIR = os.path.dirname(os.path.abspath(__file__))
 OUT_ZIP = os.path.join(SKILL_DIR, "wechat-self-analysis_clean.zip")
 
-# directories to skip entirely
-SKIP_DIRS = {"sample_reports", "output", ".wc_cache", "__pycache__", ".git"}
-# files to skip
-SKIP_FILES = {".dump.lock"}
+# directories to skip entirely (checked at ANY nesting level, not just top)
+SKIP_DIRS = {"sample_reports", "output", ".wc_cache", "__pycache__", ".git", "export"}
+# files to skip (by name)
+SKIP_FILES = {".dump.lock", "wechat-self-analysis_clean.zip"}
 # suffix to skip
 SKIP_SUFFIXES = (".part",)
 
@@ -36,9 +36,8 @@ PLACEHOLDER = (
 def collect(skill_dir):
     kept = []
     for root, dirs, files in os.walk(skill_dir):
-        rel_root = os.path.relpath(root, skill_dir)
-        top = rel_root.split(os.sep)[0]
-        if top in SKIP_DIRS:
+        parts = os.path.relpath(root, skill_dir).split(os.sep)
+        if any(p in SKIP_DIRS for p in parts):   # 任意层级命中敏感目录都跳过
             dirs[:] = []
             continue
         dirs[:] = [d for d in dirs if d not in SKIP_DIRS]

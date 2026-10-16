@@ -22,7 +22,7 @@ agent_created: true
 
 ## 标准工作流（按序执行）
 
-工作目录约定：所有产物写入技能目录下的 `output/`；解密缓存在 `.wc_cache/`（可随时删除，会自动重建）。
+工作目录约定：导出明文默认落在 `.wc_cache/export/`（临时、已 gitignore，易清理）；用户显式 `--export-raw` 并确认后才保留到 `output/`。分析脚本经 `_paths.locate_messages_jsonl()` 自动定位任一位置；解密缓存在 `.wc_cache/`（可随时删除，会自动重建）。
 
 ### 第 1 步：解密导出（scripts/dump_chats.py）
 
@@ -30,7 +30,7 @@ agent_created: true
 python scripts/dump_chats.py            # 或 --selftest 只验环境不碰微信
 ```
 
-- 自动完成：定位数据目录 → 从微信进程内存提取 SQLCipher 密钥（Config.Cipher 锚点）→ 解密全部分片 → 流式写出 `output/messages.jsonl`（每行一个消息：chat/chat_name/side/sender/type/create_time/content）+ `output/manifest.json`
+- 自动完成：定位数据目录 → 从微信进程内存提取 SQLCipher 密钥（Config.Cipher 锚点）→ 解密全部分片 → 流式写出 `messages.jsonl`（默认在 `.wc_cache/export/`，gitignore 临时区；加 `--export-raw` 并经二次确认才落到 `output/`，每行一个消息：chat/chat_name/side/sender/type/create_time/content）+ 同级 `manifest.json`
 - 内置安全机制：单实例锁（防多开截断）+ 临时文件原子转正（中途崩溃不毁旧数据）
 - `sender_id == 2` 即用户本人，`side` 字段据此生成
 - 导出失败时的错误自检顺序见 `references/pitfalls.md` 坑 1-5
@@ -90,6 +90,23 @@ python scripts/analyze_chats.py
 1. 拒绝分析非本人设备/账号的请求
 2. 导出的 `messages.jsonl` 与含真名的分析文件（network/knowledge/transcript）**不得上传网盘或对外分享**；对外内容（如文章）输出前必须脱敏（微信号、手机号、联系人真名、公司/学校名）
 3. 图片/视频仅有占位符与 md5（无画面），语音无文字稿——不要向用户承诺这两类内容可分析
+4. **读取明文前先确认**：Agent / 使用者在本机读 `messages.jsonl` 前，须向用户说明「即将读取明文聊天记录（含第三方 PII）」并获得明确同意，**不得静默读取或擅自外传**
+5. **对外必脱敏**：把任何数据交给 AI / 写文章 / 分享前，先跑 `scripts/privacy_filter.py` 自动替换手机/身份证/银行卡/邮箱/wxid/QQ/网址（姓名等弱 PII 用 `--names` 词表点名替换）
+
+## 安全模型 / Security Model
+
+本技能定位为 **Local-first Personal Data Audit（本地优先的个人数据审计工具）**，不是「微信破解工具」。核心安全属性：
+
+- **Local-first / 零联网**：解密、统计、分析全部在本机完成；脚本内无任何 `socket` / `requests` / `urllib` / `httpx` / `aiohttp` / `urlopen` 调用（已验证）。唯一联网是可选的依赖安装（从 PyPI 拉公开纯包）。
+- **最小进程权限**：提取密钥仅用 `PROCESS_VM_READ | PROCESS_QUERY_INFORMATION`（读内存 + 查信息），**不是** `PROCESS_ALL_ACCESS`。只读微信数据库，不写入、不注入、不模拟客户端。
+- **明文默认不落显眼目录**：`dump_chats.py` 默认把明文写到 gitignored 的 `.wc_cache/export/`；只有用户显式 `--export-raw` 并在交互中确认（非交互环境需 `--yes`）才落到 `output/`。
+- **读取前需用户确认**：见上方隐私红线第 4 条。
+- **对外必脱敏**：见上方隐私红线第 5 条；可用 `python tests/test_redaction.py` 验证脱敏脚本。
+- **供应链可控**：依赖仅 `cryptography` / `zstandard` / `jieba` 三个纯 PyPI 包；安装可用 `--dry-run` 预览（`install_deps.py` / `setup_check.py`）。
+
+**Agent 信任边界**：运行本技能的 Agent 与微信同处一个系统用户/会话，天然拥有读取微信进程内存的权限。因此——**只从可信来源安装技能；只在本机自己账号下运行；绝不要把技能/脚本交给不可信环境或他人执行；绝不把明文交第三方 AI。**
+
+完整整改清单见 [`SECURITY.md`](SECURITY.md)，面向用户的数据安全指南见 [`PRIVACY.md`](PRIVACY.md)。
 
 ## 故障排查
 

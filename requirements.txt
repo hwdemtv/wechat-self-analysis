@@ -1,5 +1,7 @@
 # wechat-self-analysis —— Python 依赖（真·解耦后的最小集合）
 #
+# 锁定版（精确版本、可复现）见 requirements-lock.txt：pip install -r requirements-lock.txt
+#
 # 解密核心已内置为 scripts/_decrypt.py（从 wechatauto/db.py vendored，Apache-2.0），
 # 因此本技能【不再需要】安装 wechatauto / WechatVibe，也不再需要 psutil / pywin32 /
 # uiautomation / pyperclip / colorama / Pillow 等一整棵原生依赖树。

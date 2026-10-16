@@ -11,6 +11,16 @@ sys.path.insert(0, HERE)
 from wechatauto.db import WeChatDB
 
 IN_PATH = os.path.join(SKILL_ROOT, "output", "messages.jsonl")
+# 隐私默认策略：dump 默认把明文写到 .wc_cache/export/；若 output/ 下没有，
+# 自动在 .wc_cache/export/ 或历史 scripts/export/ 定位（见 _paths.locate_messages_jsonl）。
+try:
+    from _paths import locate_messages_jsonl as _locate
+    if not os.path.exists(IN_PATH):
+        _f = _locate()
+        if _f:
+            IN_PATH = _f
+except Exception:
+    pass
 PREFIX_RE = re.compile(r"^([A-Za-z0-9_@.\-]{3,45}):\s*")
 TITLE_RE = re.compile(r"<title>(.*?)</title>", re.S)
 

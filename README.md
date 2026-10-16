@@ -34,7 +34,7 @@ A WorkBuddy agent skill that **locally** decrypts your own WeChat 4.x on-disk SQ
 
 | 维度 | 脚本 | 产出 |
 |---|---|---|
-| 解密导出 | `dump_chats.py` | `output/messages.jsonl` + `manifest.json`（流式，百万级消息单遍 14–180s） |
+| 解密导出 | `dump_chats.py` | 默认 `.wc_cache/export/messages.jsonl`（gitignore 临时区）；`--export-raw` 才落 `output/`（需确认）。`manifest.json` 同级 |
 | 四维行为画像 | `analyze_chats.py` | 沟通主动性 / 情绪 / 时间精力 / 关系维护（Chart.js 图） |
 | 年度演化 | `deep_analyze.py` | 关系×年度热力矩阵、作息热力、关键词三阶段演变 |
 | 职业转型量化 | `career_transition.py` | 三赛道季度热度、迁移指数、转型拐点 |
@@ -65,7 +65,9 @@ A WorkBuddy agent skill that **locally** decrypts your own WeChat 4.x on-disk SQ
 
 ## 三种安装方式 / Install
 
-### 方式一：一键脚本（推荐）
+### 方式一：一键脚本（可选，存在供应链风险）
+
+> ⚠️ **安全提示**：本工具会读取微信进程内存与本地聊天数据。把远程脚本直接 `irm ... | iex` / `curl ... | bash` 交给本机执行，一旦仓库/账号/CDN 被篡改或网络被劫持，风险远高于普通工具。**本仓库不推荐**把它作为本工具的默认安装方式，建议优先用「方式三：下载干净版 zip」并在解压前校验 SHA-256。
 
 **Windows（PowerShell）：**
 ```powershell
@@ -83,11 +85,12 @@ curl -fsSL https://github.com/hwdemtv/wechat-self-analysis/raw/main/install.sh |
 git clone https://github.com/hwdemtv/wechat-self-analysis.git ~/.workbuddy/skills/wechat-self-analysis
 ```
 
-### 方式三：下载干净版 zip
+### 方式三：下载干净版 zip（推荐）
 
-不想克隆仓库时，直接获取现成干净版即可：
+不想克隆仓库、或不希望直接执行远程脚本时，直接获取现成干净版即可：
 
 - 到仓库 **Releases** 页下载 `wechat-self-analysis_clean.zip`（已剔除一切真实聊天数据，仅留占位说明）；
+- **校验完整性**：发布页附该 zip 的 **SHA-256** 值，解压前先比对，确认下载物与作者发布一致（防篡改 / 传输劫持）；
 - 解压到你的 Agent 技能目录（如 `~/.workbuddy/skills/`），重启 Agent 即生效。
 
 > 本技能是标准 `SKILL.md` 体系，按你所用 Agent 的技能目录放置即可，**无需为不同 Agent 改写任何文件**。
@@ -139,7 +142,7 @@ python scripts/network_assets.py
 python scripts/knowledge_assets.py
 ```
 
-产物写入技能目录下的 `output/`。完整工作流见 [`SKILL.md`](SKILL.md)。
+产物默认写入技能目录下的 `.wc_cache/export/`（临时、已 gitignore）；若需保留到 `output/` 供分享，加 `--export-raw` 并确认。分析脚本通过 `_paths.locate_messages_jsonl()` 自动定位任一位置。完整工作流见 [`SKILL.md`](SKILL.md)。
 
 ---
 
@@ -150,6 +153,11 @@ python scripts/knowledge_assets.py
 - ✅ 对外分享内容（文章、样例）输出前必须脱敏（微信号、手机号、联系人真名、公司/学校名）。
 - ✅ 本仓库**不含任何作者真实聊天数据**：`sample_reports/` 在发布时已替换为占位说明。
 - ⚠️ 导出的 `messages.jsonl` 与含真名的分析文件**请勿上传网盘或公开分享**。
+- 🧰 **脱敏工具**：分享或喂给 AI 前，先用 [`scripts/privacy_filter.py`](scripts/privacy_filter.py) 自动替换手机/身份证/银行卡/邮箱/wxid/QQ/网址；姓名等弱 PII 用 `--names` 词表点名替换（`python tests/test_redaction.py` 验证可用）。
+- 🛑 **明文默认不落显眼目录**：`dump_chats.py` 默认导出到 gitignored 的 `.wc_cache/export/`；只有显式 `--export-raw` 并二次确认才落到 `output/`。
+- 🔍 **安装/自检可预览**：`install_deps.py` 与 `setup_check.py` 支持 `--dry-run`，先看清会做什么再决定是否执行。
+- 📘 面向用户的数据安全指南见 [`PRIVACY.md`](PRIVACY.md)。
+- 🔒 安全与供应链说明见 [`SECURITY.md`](SECURITY.md)（安装校验、数据生命周期、脱敏层、AI 调用边界、发布前检查项）。
 
 ---
 
@@ -157,20 +165,28 @@ python scripts/knowledge_assets.py
 
 ```
 wechat-self-analysis/
-├── SKILL.md                 # 技能本体（工作流 / 隐私红线）
+├── SKILL.md                 # 技能本体（工作流 / 隐私红线 / 安全模型）
 ├── README.md                # 本文件
+├── PRIVACY.md               # 面向用户的数据安全指南
+├── SECURITY.md              # 安全整改清单 V1.0（P0/P1/P2）
 ├── LICENSE                  # MIT
 ├── config.json              # 分析词典（通用示例，可自定义）
-├── requirements.txt         # cryptography / zstandard / jieba
-├── install_deps.cmd         # Windows 双击安装依赖
+├── requirements.txt         # cryptography / zstandard / jieba（人类友好）
+├── requirements-lock.txt    # 精确锁定版（可复现）
+├── install_deps.cmd         # Windows 双击安装依赖（支持 --dry-run）
 ├── install.sh / install.ps1 # 跨平台一键安装本技能
 ├── build_clean_dist.py      # 生成干净分发 zip
 ├── references/              # 密钥提取原理 / 坑位表
 ├── sample_reports/          # 占位（发布版无真实数据）
+├── examples/                # 假数据样例（safe to share）
+│   └── sample_messages.jsonl
 └── scripts/
     ├── _decrypt.py          # vendored 解密核心（SQLCipher 4）
-    ├── dump_chats.py        # 解密导出
-    ├── install_deps.py      # 依赖检查 + 安装引导
+    ├── _paths.py            # 明文定位 + 日志脱敏（统一各脚本）
+    ├── dump_chats.py        # 解密导出（默认落 .wc_cache/export，--export-raw 需确认）
+    ├── privacy_filter.py    # 脱敏工具（P1-05）
+    ├── install_deps.py      # 依赖检查 + 安装引导（--dry-run kill switch）
+    ├── setup_check.py       # 环境自检（--dry-run）
     ├── analyze_chats.py     # 四维画像
     ├── deep_analyze.py      # 年度演化
     ├── career_transition.py # 职业转型量化
@@ -182,6 +198,8 @@ wechat-self-analysis/
     ├── private_domain_audit.py # 私域审计
     ├── export_chat_transcript.py # 单会话全文
     └── identify_md5_chats.py    # md5 身份破解
+└── tests/
+    └── test_redaction.py    # privacy_filter 单元测试
 ```
 
 ---

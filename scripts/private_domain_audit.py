@@ -9,6 +9,15 @@ import os, re, json, sys, time, collections
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 SRC = os.path.join(HERE, "export", "messages.jsonl")
+# 隐私默认策略：若 scripts/export/ 下没有明文，自动在 .wc_cache/export/ 或 output/ 定位。
+try:
+    from _paths import locate_messages_jsonl as _locate
+    if not os.path.exists(SRC):
+        _f = _locate()
+        if _f:
+            SRC = _f
+except Exception:
+    pass
 OUT_JSON = os.path.join(HERE, "export", "private_domain_audit.json")
 OUT_MD = os.path.join(HERE, "export", "private_domain_audit.md")
 OUT_HTML = os.path.join(HERE, "export", "private_domain_audit.html")
