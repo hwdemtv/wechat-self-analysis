@@ -2,6 +2,7 @@
 
 > **本地解密 · 隐私优先 · 全离线** —— 把你自己微信 4.x 的本地加密数据库解密导出为明文，再跑一套行为分析报告。
 > **Privacy-first, fully offline** WeChat 4.x chat export & self-behavior analytics.
+> **定位**：这是一个 **Local-first Personal Data Audit（本地优先的个人数据审计工具）**，**不是「微信破解工具」**。核心卖点是「聊天记录不上传、统计在本地、AI 只处理脱敏后的结果」。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Platform](https://img.shields.io/badge/platform-Windows-blue.svg)](https://github.com/hwdemtv/wechat-self-analysis)
@@ -25,7 +26,7 @@ A WorkBuddy agent skill that **locally** decrypts your own WeChat 4.x on-disk SQ
 
 - 🔐 **密钥只活在微信进程内存**——这是整个方案的第一性原理。本技能用 `ctypes` 直接从 `Weixin.exe` 内存提取 SQLCipher 主密钥，再逐页 AES-256-CBC 解密，**不需要 root、不需要模拟器、不需要任何第三方账号**。
 - 🧩 **解密核心已 vendored**——不再依赖 `wechatauto`，只需三个纯 PyPI 包（`cryptography` / `zstandard` / `jieba`）。
-- 📊 **十层分析**：四维行为画像、年度演化、职业转型量化、人脉资产、知识资产、沟通风格、项目全周期漏斗、自我认知侧写、私域关系审计、单会话全文导出。
+- 📊 **十余个分析维度**：四维行为画像、年度演化、职业转型量化、人脉资产、知识资产、沟通风格、项目全周期漏斗、自我认知侧写、私域关系审计、单会话全文导出——覆盖沟通/情绪/时间/关系/资产/风格等多角度（详见下方功能表）。
 - 🛡️ **隐私红线内建**：拒绝分析他人账号；导出物与含真名文件禁止外传；对外内容输出前强制脱敏。
 
 ---
@@ -89,7 +90,7 @@ git clone https://github.com/hwdemtv/wechat-self-analysis.git ~/.workbuddy/skill
 
 不想克隆仓库、或不希望直接执行远程脚本时，直接获取现成干净版即可：
 
-- 到仓库 **Releases** 页下载 `wechat-self-analysis_clean.zip`（已剔除一切真实聊天数据，仅留占位说明）；
+- 到仓库 **Releases** 页下载 `wechat-self-analysis_clean.zip`（已剔除一切真实聊天数据，仅留占位说明）；**当前最新 Release：`v1.2.0`（安全整改 P0/P1/P2）**。
 - **校验完整性**：发布页附该 zip 的 **SHA-256** 值，解压前先比对，确认下载物与作者发布一致（防篡改 / 传输劫持）；
 - 解压到你的 Agent 技能目录（如 `~/.workbuddy/skills/`），重启 Agent 即生效。
 
@@ -113,11 +114,13 @@ git clone https://github.com/hwdemtv/wechat-self-analysis.git ~/.claude/skills/w
 
 > 放置后**重启对应 Agent / 开新会话**即可生效；Codex 会自动扫描技能目录，未出现时重启一次。所有 Agent 共用同一套 `SKILL.md` 开放标准。
 
-安装后，**先运行依赖引导**：
+安装后，**先运行依赖引导**（拿不准会装什么？加 `--dry-run` 只预览、不真装）：
 ```bash
 # Windows 直接双击
 install_deps.cmd
-# 或任意平台
+# 或任意平台（--dry-run 仅预览 pip 命令，绝不安装）
+python scripts/install_deps.py --dry-run
+# 确认无误后实装：
 python scripts/install_deps.py
 ```
 
@@ -129,7 +132,7 @@ python scripts/install_deps.py
 > 如需微信 4.x 安装包（社区分享，非官方渠道）：<https://pan.quark.cn/s/5460249b7eba> —— 请自行校验文件来源与安全。
 
 ```bash
-# 1) 解密导出
+# 1) 解密导出（默认明文落 .wc_cache/export/，gitignore 临时区；想保留到 output/ 加 --export-raw 并确认）
 python scripts/dump_chats.py            # 或 --selftest 只验环境不碰微信
 
 # 2) 四维行为分析
@@ -140,6 +143,9 @@ python scripts/deep_analyze.py
 python scripts/career_transition.py
 python scripts/network_assets.py
 python scripts/knowledge_assets.py
+
+# 4) 对外分享 / 喂 AI 前先脱敏（自动替换手机/身份证/银行卡/邮箱/wxid/QQ/网址）
+python scripts/privacy_filter.py output/analysis_report.md -o out_redacted.md --summary
 ```
 
 产物默认写入技能目录下的 `.wc_cache/export/`（临时、已 gitignore）；若需保留到 `output/` 供分享，加 `--export-raw` 并确认。分析脚本通过 `_paths.locate_messages_jsonl()` 自动定位任一位置。完整工作流见 [`SKILL.md`](SKILL.md)。
